@@ -36,8 +36,9 @@ void setup() {
 // MAIN LOOP
 void loop() {
   Usb.Task();
-  if !(Xbox.XboxOneConnected) {
+  if (!Xbox.XboxOneConnected) {
     delay(1);
+    return;
   }
 
   // Analog Sticks
@@ -86,11 +87,11 @@ void loop() {
       Serial.print("\t");
     }
     if (Xbox.getButtonPress(R2) > 0) {
-      Serial.print(F("R2: "));
-      Serial.print(Xbox.getButtonPress(R2));
-      Serial.print("\t");
+      //Serial.print(F("R2: "));
+      //Serial.print(Xbox.getButtonPress(R2));
+      //Serial.print("\t");
     }
-    Serial.println();
+    // Serial.println();
 
     if (Xbox.getButtonClick(L2))
       Serial.println(F("L2"));
