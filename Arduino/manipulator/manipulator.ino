@@ -87,16 +87,17 @@ void loop() {
       Serial.print("\t");
     }
     if (Xbox.getButtonPress(R2) > 0) {
-      //Serial.print(F("R2: "));
-      //Serial.print(Xbox.getButtonPress(R2));
-      //Serial.print("\t");
+      Serial.print(F("R2: "));
+      Serial.print(Xbox.getButtonPress(R2));
+      Serial.print("\t");
     }
-    // Serial.println();
+    Serial.println();
 
-    if (Xbox.getButtonClick(L2))
-      Serial.println(F("L2"));
-    if (Xbox.getButtonClick(R2))
-      Serial.println(F("R2"));
+    // Triggers as Buttons
+    // if (Xbox.getButtonClick(L2))
+    //  Serial.println(F("L2"));
+    // if (Xbox.getButtonClick(R2))
+    //  Serial.println(F("R2"));
   }
 
 
