@@ -1,9 +1,8 @@
-// GAMEPAD
+// Gamepad
 #include <XBOXONE.h>
 #include <SPI.h>
 USB Usb;
 XBOXONE Xbox(&Usb);
-
 
 // PWM
 #include <Wire.h>
@@ -11,11 +10,10 @@ XBOXONE Xbox(&Usb);
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
 
-// SETUP
 void setup() {
   // Initialize Serial Port, for debugging.
   Serial.begin(115200);
-  while (!Serial); // Wait for serial port to connect
+  while (!Serial);
 
   // Initialize Gamepad.
   if (Usb.Init() == -1) {
@@ -32,34 +30,45 @@ void setup() {
   Wire.setClock(400000);
 }
 
-int openValve(int addr, int hatVal) {
 
-  int inVal = hatVal;
-  const int inMax = 32767;
-  const int inMin = 10000; // Dead Zone
-  const int outMax = 75;
-  const int outMin = 0;
+void moveMusclePair(int blackAddr, int greyAddr, int hatVal, String label) {
+  // Move a muscle pair in one dimension using an analog hat value.
 
   int blackVal;
   int greyVal;
-  if (inVal < 7500) {
+  const int hatMax = 32767;
+  const int hatMin = 10000; // Dead Zone
+  const int outMax = 75;
+  const int outMin = 0;
+
+  // Set muscle values.
+  if (abs(hatVal) <= hatMin) {
+    // Hat is in dead zone.
+    blackVal = 0;
     greyVal = 0;
-    blackVal = map(inVal, 0, inMax, 0, outMax);
   } 
   else {
-    greyVal = map(inVal, 0, inMax, 0, outMax);
-    blackVal = 0;
+    if (hatVal > hatMin) {
+      // Hat is up/right.
+      blackVal = map(hatVal, 0, hatMax, 0, outMax);
+      greyVal = 0;
+    }
+    else {
+      // Hat is down/left.
+      blackVal = 0;
+      greyVal = abs(map(hatVal, 0, hatMax, 0, outMax));
+    }
+
+    // Log values (if non-zero).
+    Serial.print((String)label+": Black: "+blackVal+", Grey: "+greyVal+"\n");
   }
 
-  Serial.print(outVal);
-  // Serial.print("\n");
-  pwm.setPWM(1, 0, 1 ); // TODO
-  pwm.setPWM(0, 0, strength); // TODO
-  return outVal;
+  // Set PWM.
+  pwm.setPWM(blackAddr, 0, blackVal);
+  pwm.setPWM(greyAddr, 0, greyVal);
 }
 
 
-// MAIN LOOP
 void loop() {
   Usb.Task();
   if (!Xbox.XboxOneConnected) {
@@ -67,93 +76,100 @@ void loop() {
     return;
   }
 
-  // Analog Sticks
-  if (Xbox.getAnalogHat(LeftHatX) > 7500 || Xbox.getAnalogHat(LeftHatX) < -7500) {
-    Serial.print(F("LeftHatX: "));
-    Serial.print(Xbox.getAnalogHat(LeftHatX));
-    Serial.print("\t");
-  }
-  if (Xbox.getAnalogHat(LeftHatY) > 7500 || Xbox.getAnalogHat(LeftHatY) < -7500) {
-    Serial.print(F("LeftHatY: "));
-    Serial.print(Xbox.getAnalogHat(LeftHatY));
-    Serial.print("\t");
-  }
-  if (Xbox.getAnalogHat(RightHatX) > 7500 || Xbox.getAnalogHat(RightHatX) < -7500) {
-    Serial.print(F("RightHatX: "));
-    Serial.print(Xbox.getAnalogHat(RightHatX));
-    Serial.print("\t");
-  }
+  // PWM addresses for each pair of muscles
+  const int armPitchAddrBlack      = 0, armPitchAddrGrey     = 1;
+  const int armYawAddrBlack        = 2, armYawAddrGrey       = 3;
+  const int wristPitchAddrBlack    = 4, wristPitchAddrGrey   = 5;
+  const int wristRollAddrBlack     = 6, wristRollAddrGrey    = 7;
 
-  int strength = getStrength(Xbox.getAnalogHat(RightHatY));
+  // RightHat -> Arm
+  moveMusclePair(armPitchAddrBlack, armPitchAddrGrey, Xbox.getAnalogHat(RightHatY), "Arm Pitch");
+  moveMusclePair(armYawAddrBlack, armYawAddrGrey, Xbox.getAnalogHat(RightHatX), "Arm Yaw");
 
-  Serial.println();
+  // RightHat -> Wrist
+  moveMusclePair(wristPitchAddrBlack, wristPitchAddrGrey, Xbox.getAnalogHat(LeftHatY), "Wrist Pitch");
+  moveMusclePair(wristRollAddrBlack, wristRollAddrGrey, Xbox.getAnalogHat(LeftHatX), "Wrist Roll");
 
 
-  // Triggers
-  if (Xbox.getButtonPress(L2) > 0 || Xbox.getButtonPress(R2) > 0) {
-    if (Xbox.getButtonPress(L2) > 0) {
-      Serial.print(F("L2: "));
-      Serial.print(Xbox.getButtonPress(L2));
-      Serial.print("\t");
-    }
-    if (Xbox.getButtonPress(R2) > 0) {
-      Serial.print(F("R2: "));
-      Serial.print(Xbox.getButtonPress(R2));
-      Serial.print("\t");
-    }
-    Serial.println();
-
-    // Triggers as Buttons
-    // if (Xbox.getButtonClick(L2))
-    //  Serial.println(F("L2"));
-    // if (Xbox.getButtonClick(R2))
-    //  Serial.println(F("R2"));
-  }
 
 
-  // D-Pad
-  if (Xbox.getButtonClick(UP))
-    Serial.println(F("Up"));
-  if (Xbox.getButtonClick(DOWN))
-    Serial.println(F("Down"));
-  if (Xbox.getButtonClick(LEFT))
-    Serial.println(F("Left"));
-  if (Xbox.getButtonClick(RIGHT))
-    Serial.println(F("Right"));
 
 
-  // Specials
+
+
+
+
+
+
+
+
+
+
+  // // Triggers
+  // if (Xbox.getButtonPress(L2) > 0 || Xbox.getButtonPress(R2) > 0) {
+  //   if (Xbox.getButtonPress(L2) > 0) {
+  //     Serial.print(F("L2: "));
+  //     Serial.print(Xbox.getButtonPress(L2));
+  //     Serial.print("\t");
+  //   }
+  //   if (Xbox.getButtonPress(R2) > 0) {
+  //     Serial.print(F("R2: "));
+  //     Serial.print(Xbox.getButtonPress(R2));
+  //     Serial.print("\t");
+  //   }
+  //   Serial.println();
+
+  //   // Triggers as Buttons
+  //   // if (Xbox.getButtonClick(L2))
+  //   //  Serial.println(F("L2"));
+  //   // if (Xbox.getButtonClick(R2))
+  //   //  Serial.println(F("R2"));
+  // }
+
+
+  // // D-Pad
   // if (Xbox.getButtonClick(UP))
-  // if (Xbox.getButtonClick(START))
-  //   Serial.println(F("Start"));
-  // if (Xbox.getButtonClick(BACK))
-  //   Serial.println(F("Back"));
-  // if (Xbox.getButtonClick(XBOX))
-  //   Serial.println(F("Xbox"));
-  // if (Xbox.getButtonClick(SYNC))
-  //   Serial.println(F("Sync"));
+  //   Serial.println(F("Up"));
+  // if (Xbox.getButtonClick(DOWN))
+  //   Serial.println(F("Down"));
+  // if (Xbox.getButtonClick(LEFT))
+  //   Serial.println(F("Left"));
+  // if (Xbox.getButtonClick(RIGHT))
+  //   Serial.println(F("Right"));
 
 
-  // Bumpers
-  if (Xbox.getButtonClick(L1))
-    Serial.println(F("L1"));
-  if (Xbox.getButtonClick(R1))
-    Serial.println(F("R1"));
-  if (Xbox.getButtonClick(L3))
-    Serial.println(F("L3"));
-  if (Xbox.getButtonClick(R3))
-    Serial.println(F("R3"));
+  // // Specials
+  // // if (Xbox.getButtonClick(UP))
+  // // if (Xbox.getButtonClick(START))
+  // //   Serial.println(F("Start"));
+  // // if (Xbox.getButtonClick(BACK))
+  // //   Serial.println(F("Back"));
+  // // if (Xbox.getButtonClick(XBOX))
+  // //   Serial.println(F("Xbox"));
+  // // if (Xbox.getButtonClick(SYNC))
+  // //   Serial.println(F("Sync"));
 
 
-  // Letters
-  if (Xbox.getButtonClick(A))
-    Serial.println(F("A"));
-  if (Xbox.getButtonClick(B))
-    Serial.println(F("B"));
-  if (Xbox.getButtonClick(X))
-    Serial.println(F("X"));
-  if (Xbox.getButtonClick(Y))
-    Serial.println(F("Y"));
+  // // Bumpers
+  // if (Xbox.getButtonClick(L1))
+  //   Serial.println(F("L1"));
+  // if (Xbox.getButtonClick(R1))
+  //   Serial.println(F("R1"));
+  // if (Xbox.getButtonClick(L3))
+  //   Serial.println(F("L3"));
+  // if (Xbox.getButtonClick(R3))
+  //   Serial.println(F("R3"));
+
+
+  // // Letters
+  // if (Xbox.getButtonClick(A))
+  //   Serial.println(F("A"));
+  // if (Xbox.getButtonClick(B))
+  //   Serial.println(F("B"));
+  // if (Xbox.getButtonClick(X))
+  //   Serial.println(F("X"));
+  // if (Xbox.getButtonClick(Y))
+  //   Serial.println(F("Y"));
 
 
   delay(1);
