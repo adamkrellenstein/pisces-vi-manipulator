@@ -32,6 +32,32 @@ void setup() {
   Wire.setClock(400000);
 }
 
+int openValve(int addr, int hatVal) {
+
+  int inVal = hatVal;
+  const int inMax = 32767;
+  const int inMin = 10000; // Dead Zone
+  const int outMax = 75;
+  const int outMin = 0;
+
+  int blackVal;
+  int greyVal;
+  if (inVal < 7500) {
+    greyVal = 0;
+    blackVal = map(inVal, 0, inMax, 0, outMax);
+  } 
+  else {
+    greyVal = map(inVal, 0, inMax, 0, outMax);
+    blackVal = 0;
+  }
+
+  Serial.print(outVal);
+  // Serial.print("\n");
+  pwm.setPWM(1, 0, 1 ); // TODO
+  pwm.setPWM(0, 0, strength); // TODO
+  return outVal;
+}
+
 
 // MAIN LOOP
 void loop() {
@@ -42,41 +68,25 @@ void loop() {
   }
 
   // Analog Sticks
-  if (Xbox.getAnalogHat(LeftHatX) > 7500 || Xbox.getAnalogHat(LeftHatX) < -7500 || Xbox.getAnalogHat(LeftHatY) > 7500 || Xbox.getAnalogHat(LeftHatY) < -7500 || Xbox.getAnalogHat(RightHatX) > 7500 || Xbox.getAnalogHat(RightHatX) < -7500 || Xbox.getAnalogHat(RightHatY) > 7500 || Xbox.getAnalogHat(RightHatY) < -7500) {
-    if (Xbox.getAnalogHat(LeftHatX) > 7500 || Xbox.getAnalogHat(LeftHatX) < -7500) {
-      Serial.print(F("LeftHatX: "));
-      Serial.print(Xbox.getAnalogHat(LeftHatX));
-      Serial.print("\t");
-    }
-    if (Xbox.getAnalogHat(LeftHatY) > 7500 || Xbox.getAnalogHat(LeftHatY) < -7500) {
-      Serial.print(F("LeftHatY: "));
-      Serial.print(Xbox.getAnalogHat(LeftHatY));
-      Serial.print("\t");
-    }
-    if (Xbox.getAnalogHat(RightHatX) > 7500 || Xbox.getAnalogHat(RightHatX) < -7500) {
-      Serial.print(F("RightHatX: "));
-      Serial.print(Xbox.getAnalogHat(RightHatX));
-      Serial.print("\t");
-    }
-    if (Xbox.getAnalogHat(RightHatY) > 7500 || Xbox.getAnalogHat(RightHatY) < -7500) {
-      Serial.print(F("RightHatY: "));
-      Serial.print(Xbox.getAnalogHat(RightHatY));
-
-     // full range int val = (Xbox.getAnalogHat(RightHatY)-7500-500)/((32767-7500)/4096);
-      int val = (Xbox.getAnalogHat(RightHatY)-7500-500)/((32767-7500)/50);
-
-      Serial.print(" VAL: ");
-      Serial.print(val);
-      Serial.print("\n");
-
-      pwm.setPWM(0, 0, val); // TODO
-      pwm.setPWM(1, 0, 1 ); // TODO
-
-      // pwm.setPWM(1, 0, 4096-((Xbox.getAnalogHat(RightHatY)-5000)/8 % 4096 )); // TODO
-
-    }
-    Serial.println();
+  if (Xbox.getAnalogHat(LeftHatX) > 7500 || Xbox.getAnalogHat(LeftHatX) < -7500) {
+    Serial.print(F("LeftHatX: "));
+    Serial.print(Xbox.getAnalogHat(LeftHatX));
+    Serial.print("\t");
   }
+  if (Xbox.getAnalogHat(LeftHatY) > 7500 || Xbox.getAnalogHat(LeftHatY) < -7500) {
+    Serial.print(F("LeftHatY: "));
+    Serial.print(Xbox.getAnalogHat(LeftHatY));
+    Serial.print("\t");
+  }
+  if (Xbox.getAnalogHat(RightHatX) > 7500 || Xbox.getAnalogHat(RightHatX) < -7500) {
+    Serial.print(F("RightHatX: "));
+    Serial.print(Xbox.getAnalogHat(RightHatX));
+    Serial.print("\t");
+  }
+
+  int strength = getStrength(Xbox.getAnalogHat(RightHatY));
+
+  Serial.println();
 
 
   // Triggers
