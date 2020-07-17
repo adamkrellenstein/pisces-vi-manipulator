@@ -35,29 +35,28 @@ void setup() {
   pwm.begin();
   pwm.setOscillatorFrequency(27000000);
   pwm.setPWMFreq(1600);  // Maximum PWM frequency
-  Wire.setClock(400000);
+  // Wire.setClock(100000);
 
   Serial.print(F("***All Systems Nominal.***\n"));
 }
 
 
 int scale(int val) {
-  int val2 = abs(val);
-  // return sqrt(val2);
-  return cbrt(val2);
+  return sqrt(abs(val));
 }
 
 
 void moveMusclePair(String label, int blackAddr, int greyAddr, int hatVal) {
   // Move a muscle pair in one dimension using an analog hat value.
+  // TODO: Holding down a button, make all values minimum.
 
   int blackVal;
   int greyVal;
   int hatMax = 32767;
-  if (hatVal == -32768) { hatVal++; } // TODO
-  int hatMin = 10000;       // Dead zone
-  const int outMax = 75;     // May be determined by a PWM frequency.
-  const int outMin = 0;
+  int hatMin = 7500;                  // Dead zone
+  if (hatVal == -32768) { hatVal++; } // Otherwise, triggers an overflow.
+  const int outMax = 75;              // May be determined by a PWM frequency.
+  const int outMin = 15;              // Ditto
 
   // Set muscle values.
   if (abs(hatVal) <= hatMin) {
@@ -67,18 +66,18 @@ void moveMusclePair(String label, int blackAddr, int greyAddr, int hatVal) {
   } 
   else if (hatVal > hatMin) {
     // Hat is up/right.
-    blackVal = map(scale(hatVal), scale(hatMin), scale(hatMax), 0, outMax);
+    blackVal = map(scale(hatVal), scale(hatMin), scale(hatMax), outMin, outMax);
     greyVal = 0;
   }
   else {
     // Hat is down/left.
     blackVal = 0;
-    greyVal = abs(map(scale(hatVal), scale(hatMin), scale(hatMax), 0, outMax));
+    greyVal = abs(map(scale(hatVal), scale(hatMin), scale(hatMax), outMin, outMax));
   }
 
   // Log values.
-  // Serial.print((String)label+": Black: "+blackVal+", Grey: "+greyVal+"  |  ");
-  Serial.print((String)scale(hatVal)+" "+scale(hatMin)+" "+scale(hatMax)+" "+blackVal+"  |  ");
+  Serial.print((String)label+": Black: "+blackVal+", Grey: "+greyVal+"  |  ");
+  // if (label == "Arm Pitch") { Serial.print((String)scale(hatVal)+" "+scale(hatMin)+" "+scale(hatMax)+" "+blackVal); } // DEBUG
 
   // Set PWM.
   pwm.setPWM(blackAddr, 0, blackVal);
