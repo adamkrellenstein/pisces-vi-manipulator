@@ -41,24 +41,23 @@ void setup() {
 }
 
 
+int scale(int val) {
+  int val2 = abs(val);
+  // return sqrt(val2);
+  return cbrt(val2);
+}
+
+
 void moveMusclePair(String label, int blackAddr, int greyAddr, int hatVal) {
   // Move a muscle pair in one dimension using an analog hat value.
 
   int blackVal;
   int greyVal;
   int hatMax = 32767;
+  if (hatVal == -32768) { hatVal++; } // TODO
   int hatMin = 10000;       // Dead zone
-  const int outMax = 75;    // TODO: This seems way too low. Should be 4092?!
+  const int outMax = 75;     // May be determined by a PWM frequency.
   const int outMin = 0;
-
-  // Serial.print(label);
-  // Serial.print(" ");
-  // hatMin = sq(hatMin);
-  // hatMax = sq(hatMax);
-  // Serial.print(abs(hatVal));
-  // Serial.print("\t");
-  // hatVal = sq(abs(hatVal));
-  // Serial.print(hatVal);
 
   // Set muscle values.
   if (abs(hatVal) <= hatMin) {
@@ -68,17 +67,18 @@ void moveMusclePair(String label, int blackAddr, int greyAddr, int hatVal) {
   } 
   else if (hatVal > hatMin) {
     // Hat is up/right.
-    blackVal = map(hatVal, 0, hatMax, 0, outMax);
+    blackVal = map(scale(hatVal), scale(hatMin), scale(hatMax), 0, outMax);
     greyVal = 0;
   }
   else {
     // Hat is down/left.
     blackVal = 0;
-    greyVal = abs(map(hatVal, 0, hatMax, 0, outMax));
+    greyVal = abs(map(scale(hatVal), scale(hatMin), scale(hatMax), 0, outMax));
   }
 
   // Log values.
-  Serial.print((String)label+": Black: "+blackVal+", Grey: "+greyVal+"  |  ");
+  // Serial.print((String)label+": Black: "+blackVal+", Grey: "+greyVal+"  |  ");
+  Serial.print((String)scale(hatVal)+" "+scale(hatMin)+" "+scale(hatMax)+" "+blackVal+"  |  ");
 
   // Set PWM.
   pwm.setPWM(blackAddr, 0, blackVal);
