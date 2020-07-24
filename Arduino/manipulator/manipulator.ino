@@ -23,6 +23,10 @@ const int clawAddrBlack          = 8, clawAddrGrey         = 9;
 // Global Variable Initialization
 int slow = 0;     // By default, slow mode is off.
 
+// Establish the maximum and minimum PWM power values that the valves take. When `outVal` is `75`, the valve opens all the way; when `outVal` is `15`, it just barely opens.
+const int outMax = 75;              // May be determined by a PWM frequency.
+const int outMin = 15;              // Ditto
+
 
 void setup() {
   // This is a special function for Arduinos: it runs exactly once every time the Arduino is loaded with a new codebase or the board restarts.
@@ -59,11 +63,34 @@ int scale(int val) {
 }
 
 void moveMusclePairTrigger(String label, int blackAddr, int greyAddr, int triggerValBlack, int triggerValGrey, int slow) {
-  Serial.print(triggerValBlack);
-  Serial.print(triggerValGrey);
+  int blackVal;
+  int greyVal;
+
+  int triggerMin = 100; // TODO: Dead zone
+  int triggerMax = 1023;
+
+  if (triggerValBlack > 0 && triggerValGrey > 0) {
+    blackVal = 0;
+    greyVal = 0;
+  }
+  else if (triggerValBlack > triggerMin) {
+    blackVal = outMax; // TODO
+    greyVal = outMin;
+  }
+  else if (triggerValGrey > triggerMin) {
+    blackVal = outMin;
+    greyVal = outMax; // TODO
+  }
+  else {
+    blackVal = 0;
+    greyVal = 0;
+  }
+
+  Serial.print((String)label+": Black: "+blackVal+", Grey: "+greyVal+"  |  ");
+
 }
 
-void moveMusclePair(String label, int blackAddr, int greyAddr, int hatVal, int slow) {
+void moveMusclePairHat(String label, int blackAddr, int greyAddr, int hatVal, int slow) {
   // Move a muscle pair in one dimension using an analog hat value.
   // (The `label` is a non-semantic string used only for logging purposes. The two addresses are the PWM addresses of the two muscles in the pair (for a single dimension of motion). The hat value is the value the gamepad uses to represent the deviation of an analog stick from center, for the dimension in question. When `slow` is non-zero (i.e. true), the analog sticks will only ever make muscles move at their absolute slowest rate (specified by the `outMin` value).)
 
@@ -82,10 +109,6 @@ void moveMusclePair(String label, int blackAddr, int greyAddr, int hatVal, int s
   else {
     hatMin = 7500;                    // Dead zone (normal)
   }
-
-  // Establish the maximum and minimum PWM power values that the valves take. When `outVal` is `75`, the valve opens all the way; when `outVal` is `15`, it just barely opens.
-  const int outMax = 75;              // May be determined by a PWM frequency.
-  const int outMin = 15;              // Ditto
 
   if (hatVal == -32768) { hatVal++; } // There's some weirdness here that I don't understand. Without this, you get an overflow problem later.
 
@@ -147,19 +170,19 @@ void loop() {
   // (For each loop of the program, for each muscle pair, move that muscle pair based on the corresponding gamepad input value. For instance, use the `Y` dimension of the right analog stick to control arm pitch.)
 
   // RightHat -> Arm
-  moveMusclePair("Arm Pitch", armPitchAddrBlack, armPitchAddrGrey, Xbox.getAnalogHat(RightHatY), slow);
-  moveMusclePair("Arm Yaw", armYawAddrBlack, armYawAddrGrey, Xbox.getAnalogHat(RightHatX), slow);
+  moveMusclePairHat("Arm Pitch", armPitchAddrBlack, armPitchAddrGrey, Xbox.getAnalogHat(RightHatY), slow);
+  moveMusclePairHat("Arm Yaw", armYawAddrBlack, armYawAddrGrey, Xbox.getAnalogHat(RightHatX), slow);
 
   // LeftHat -> Wrist
-  moveMusclePair("Wrist Pitch", wristPitchAddrBlack, wristPitchAddrGrey, Xbox.getAnalogHat(LeftHatY), slow);
-  moveMusclePair("Wrist Roll", wristRollAddrBlack, wristRollAddrGrey, Xbox.getAnalogHat(LeftHatX), slow);
+  moveMusclePairHat("Wrist Pitch", wristPitchAddrBlack, wristPitchAddrGrey, Xbox.getAnalogHat(LeftHatY), slow);
+  moveMusclePairHat("Wrist Roll", wristRollAddrBlack, wristRollAddrGrey, Xbox.getAnalogHat(LeftHatX), slow);
 
   if (Xbox.getButtonClick(L1)) {
-    // Triggers -> Claw
-    moveMusclePairTrigger("Claw", clawAddrBlack, clawAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
+    // Triggers + L1 -> Aux
   }
   else {
-    // Triggers + L1 -> Aux
+    // Triggers -> Claw
+    moveMusclePairTrigger("Claw", clawAddrBlack, clawAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
   }
 
 
