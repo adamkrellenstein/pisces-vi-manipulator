@@ -18,6 +18,7 @@ const int armPitchAddrBlack      = 0, armPitchAddrGrey     = 1;
 const int armYawAddrBlack        = 2, armYawAddrGrey       = 3;
 const int wristPitchAddrBlack    = 4, wristPitchAddrGrey   = 5;
 const int wristRollAddrBlack     = 6, wristRollAddrGrey    = 7;
+const int clawAddrBlack          = 8, clawAddrGrey         = 9;
 
 // Global Variable Initialization
 int slow = 0;     // By default, slow mode is off.
@@ -149,6 +150,9 @@ void loop() {
   moveMusclePair("Wrist Pitch", wristPitchAddrBlack, wristPitchAddrGrey, Xbox.getAnalogHat(LeftHatY), slow);
   moveMusclePair("Wrist Roll", wristRollAddrBlack, wristRollAddrGrey, Xbox.getAnalogHat(LeftHatX), slow);
 
+  // Triggers -> Claw
+  // moveMusclePair("Claw", clawAddrBlack, clawAddrGrey, Xbox.getButtonPress(L2), slow);
+  Serial.print(Xbox.getButtonPress(L2));
 
   // Log a newline over the Serial Port, so each loop has its own line of debug output.
   Serial.println();
