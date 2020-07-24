@@ -58,6 +58,10 @@ int scale(int val) {
   return sqrt(abs(val));
 }
 
+void moveMusclePairTrigger(String label, int blackAddr, int greyAddr, int triggerValBlack, int triggerValGrey, int slow) {
+  Serial.print(triggerValBlack);
+  Serial.print(triggerValGrey);
+}
 
 void moveMusclePair(String label, int blackAddr, int greyAddr, int hatVal, int slow) {
   // Move a muscle pair in one dimension using an analog hat value.
@@ -150,9 +154,14 @@ void loop() {
   moveMusclePair("Wrist Pitch", wristPitchAddrBlack, wristPitchAddrGrey, Xbox.getAnalogHat(LeftHatY), slow);
   moveMusclePair("Wrist Roll", wristRollAddrBlack, wristRollAddrGrey, Xbox.getAnalogHat(LeftHatX), slow);
 
-  // Triggers -> Claw
-  // moveMusclePair("Claw", clawAddrBlack, clawAddrGrey, Xbox.getButtonPress(L2), slow);
-  Serial.print(Xbox.getButtonPress(L2));
+  if (Xbox.getButtonClick(L1)) {
+    // Triggers -> Claw
+    moveMusclePairTrigger("Claw", clawAddrBlack, clawAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
+  }
+  else {
+    // Triggers + L1 -> Aux
+  }
+
 
   // Log a newline over the Serial Port, so each loop has its own line of debug output.
   Serial.println();
