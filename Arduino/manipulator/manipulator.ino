@@ -21,6 +21,7 @@ const short int wristRollAddrBlack     = 6, wristRollAddrGrey    = 7;
 const short int clawAddrBlack          = 8, clawAddrGrey         = 9;
 const short int auxOneAddrBlack        = 10, auxOneAddrGrey      = 11;
 const short int auxTwoAddrBlack        = 12, auxTwoAddrGrey      = 13;
+const short int shoulderAddrBlack      = 14, shoulderAddrGrey    = 14;
 
 // Global Variable Initialization
 int short slow = 0;     // By default, slow mode is off.
@@ -64,7 +65,7 @@ int scale(int val) {
   return sqrt(abs(val));
 }
 
-void moveMusclePairTrigger(String label, int blackAddr, int greyAddr, int triggerValBlack, int triggerValGrey, int slow) {
+void moveMusclePairTrigger(String label, short int blackAddr, short int greyAddr, int triggerValBlack, int triggerValGrey, short int slow) {
   int blackVal;
   int greyVal;
 
@@ -100,7 +101,37 @@ void moveMusclePairTrigger(String label, int blackAddr, int greyAddr, int trigge
 
 }
 
-void moveMusclePairHat(String label, int blackAddr, int greyAddr, int hatVal, int slow) {
+void moveMusclePairButton(String label, short int blackAddr, short int greyAddr, short int shoulderValBlack, short int shoulderValGrey, short int slow) {
+  
+  int blackVal;
+  int greyVal;
+
+  if (shoulderValBlack && shoulderValGrey) {
+    // If both buttons are pressed, stop the extension or retraction of arm.
+    blackVal = 0;
+    greyVal = 0;
+  }
+  else if (shoulderValBlack) {
+    blackVal = outMax;
+    greyVal = 0;
+  }
+  else if (shoulderValGrey) {
+    blackVal = 0;
+    greyVal = outMax;
+  }
+  else {
+    blackVal = 0;
+    greyVal = 0;
+  }
+
+  Serial.print((String)label+": Black: "+blackVal+", Grey: "+greyVal+"  |  ");
+
+  // Set PWM values.
+  // (Actually do the thing. Send the black and grey values---whatever they have been determined to be---to the PWM controller to control the voltage that the solenoid in each proportional valve will be fed.)
+  pwm.setPWM(blackAddr, 0, blackVal);
+  pwm.setPWM(greyAddr, 0, greyVal);
+}  
+void moveMusclePairHat(String label, short int blackAddr, short int greyAddr, int hatVal, short int slow) {
   // Move a muscle pair in one dimension using an analog hat value.
   // (The `label` is a non-semantic string used only for logging purposes. The two addresses are the PWM addresses of the two muscles in the pair (for a single dimension of motion). The hat value is the value the gamepad uses to represent the deviation of an analog stick from center, for the dimension in question. When `slow` is non-zero (i.e. true), the analog sticks will only ever make muscles move at their absolute slowest rate (specified by the `outMin` value).)
 
@@ -168,45 +199,45 @@ void moveMusclePairHat(String label, int blackAddr, int greyAddr, int hatVal, in
 void loop() {
   // Run this on every loop of the program (i.e. every 1 ms). Prepare to get new info over USB, from the gamepad, and if the gamepad isn't connected, then sleep for 1 ms, short-circuit the loop and try again.
   Usb.Task();
-  if (!Xbox.XboxOneConnected) {
+  if (Xbox.XboxOneConnected) {
+
+    // Hold the `BACK` button on the Xbox controller to make all muscles move as slowly as possible.
+    slow = Xbox.getButtonPress(BACK);
+
+
+    // (For each loop of the program, for each muscle pair, move that muscle pair based on the corresponding gamepad input value. For instance, use the `Y` dimension of the right analog stick to control arm pitch.)
+
+    // RightHat -> Arm
+    moveMusclePairHat("Arm Pitch", armPitchAddrBlack, armPitchAddrGrey, Xbox.getAnalogHat(RightHatY), slow);
+    moveMusclePairHat("Arm Yaw", armYawAddrBlack, armYawAddrGrey, Xbox.getAnalogHat(RightHatX), slow);
+
+    // LeftHat -> Wrist
+    moveMusclePairHat("Wrist Pitch", wristPitchAddrBlack, wristPitchAddrGrey, Xbox.getAnalogHat(LeftHatY), slow);
+    moveMusclePairHat("(Wrist) Roll", wristRollAddrBlack, wristRollAddrGrey, Xbox.getAnalogHat(LeftHatX), slow);
+
+    // Serial.print((String)Xbox.getButtonClick(R1)+";"+Xbox.getButtonPress(R1)+";"+Xbox.getButtonClick(L1));
+
+    if (Xbox.getButtonPress(Y)) {
+      // Triggers + Y -> AuxOne
+      moveMusclePairTrigger("AuxOne", auxOneAddrBlack, auxOneAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
+
+    }
+    else if (Xbox.getButtonPress(X)) {
+      // Triggers + X -> AuxTwo
+      moveMusclePairTrigger("AuxTwo", auxTwoAddrBlack, auxTwoAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
+
+    }
+    else {
+      // Triggers -> Claw
+      moveMusclePairTrigger("Claw", clawAddrBlack, clawAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
+    }
+    // Shoulder Buttons -> Shoulder (shoulderAddrGrey is retracting)
+    moveMusclePairButton("Extend", shoulderAddrBlack, shoulderAddrGrey, Xbox.getButtonPress(R1), Xbox.getButtonPress(L1), slow);
+
+    // Log a newline over the Serial Port, so each loop has its own line of debug output.
+    Serial.println();
+
+    // Instead of looping as fast as possible, delay for 1 ms between cycles.
     delay(1);
-    return;
   }
-
-  // Hold the `BACK` button on the Xbox controller to make all muscles move as slowly as possible.
-  slow = Xbox.getButtonPress(BACK);
-
-
-  // (For each loop of the program, for each muscle pair, move that muscle pair based on the corresponding gamepad input value. For instance, use the `Y` dimension of the right analog stick to control arm pitch.)
-
-  // RightHat -> Arm
-  moveMusclePairHat("Arm Pitch", armPitchAddrBlack, armPitchAddrGrey, Xbox.getAnalogHat(RightHatY), slow);
-  moveMusclePairHat("Arm Yaw", armYawAddrBlack, armYawAddrGrey, Xbox.getAnalogHat(RightHatX), slow);
-
-  // LeftHat -> Wrist
-  moveMusclePairHat("Wrist Pitch", wristPitchAddrBlack, wristPitchAddrGrey, Xbox.getAnalogHat(LeftHatY), slow);
-  moveMusclePairHat("(Wrist) Roll", wristRollAddrBlack, wristRollAddrGrey, Xbox.getAnalogHat(LeftHatX), slow);
-
-  // Serial.print((String)Xbox.getButtonClick(R1)+";"+Xbox.getButtonPress(R1)+";"+Xbox.getButtonClick(L1));
-
-  if (Xbox.getButtonPress(L1)) {
-    // Triggers + L1 -> AuxOne
-    moveMusclePairTrigger("AuxOne", auxOneAddrBlack, auxOneAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
-
-  }
-  else if (Xbox.getButtonPress(R1)) {
-    // Triggers + R1 -> AuxTwo
-    moveMusclePairTrigger("AuxTwo", auxTwoAddrBlack, auxTwoAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
-
-  }
-  else {
-    // Triggers -> Claw
-    moveMusclePairTrigger("Claw", clawAddrBlack, clawAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
-  }
-
-  // Log a newline over the Serial Port, so each loop has its own line of debug output.
-  Serial.println();
-
-  // Instead of looping as fast as possible, delay for 1 ms between cycles.
-  delay(1);
 }
