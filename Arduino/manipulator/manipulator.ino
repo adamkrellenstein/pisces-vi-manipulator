@@ -14,19 +14,20 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
 // PWM Addresses for Each Pair of Muscles
 // (This establishes a set of constants used throughout the codebase to abstract away the particular PWM addresses for each valve. Each muscle pair comprises a ‘black’ and a ‘grey’ muscle.)
-const int armPitchAddrBlack      = 0, armPitchAddrGrey     = 1;
-const int armYawAddrBlack        = 2, armYawAddrGrey       = 3;
-const int wristPitchAddrBlack    = 4, wristPitchAddrGrey   = 5;
-const int wristRollAddrBlack     = 6, wristRollAddrGrey    = 7;
-const int clawAddrBlack          = 8, clawAddrGrey         = 9;
-const int auxAddrBlack           = 10, auxAddrGrey         = 11;
+const short int armPitchAddrBlack      = 0, armPitchAddrGrey     = 1;
+const short int armYawAddrBlack        = 2, armYawAddrGrey       = 3;
+const short int wristPitchAddrBlack    = 4, wristPitchAddrGrey   = 5;
+const short int wristRollAddrBlack     = 6, wristRollAddrGrey    = 7;
+const short int clawAddrBlack          = 8, clawAddrGrey         = 9;
+const short int auxOneAddrBlack        = 10, auxOneAddrGrey      = 11;
+const short int auxTwoAddrBlack        = 12, auxTwoAddrGrey      = 13;
 
 // Global Variable Initialization
-int slow = 0;     // By default, slow mode is off.
+int short slow = 0;     // By default, slow mode is off.
 
 // Establish the maximum and minimum PWM power values that the valves take. When `outVal` is `75`, the valve opens all the way; when `outVal` is `15`, it just barely opens.
-const int outMax = 75;              // May be determined by a PWM frequency.
-const int outMin = 15;              // Ditto
+const short int outMax = 75;              // May be determined by a PWM frequency.
+const short int outMin = 15;              // Ditto
 
 
 void setup() {
@@ -67,10 +68,10 @@ void moveMusclePairTrigger(String label, int blackAddr, int greyAddr, int trigge
   int blackVal;
   int greyVal;
 
-  int triggerMin = 300;   // Dead zone
-  int triggerMax = 1023;
+  short int triggerMin = 300;   // Dead zone
+  short int triggerMax = 1023;
 
-  Serial.print((String)triggerValBlack+" "+triggerValGrey);
+ // Serial.print((String)triggerValBlack+" "+triggerValGrey);
 
   if (triggerValBlack > 0 && triggerValGrey > 0) {
     // If both triggers are pulled, stop the claw.
@@ -79,10 +80,10 @@ void moveMusclePairTrigger(String label, int blackAddr, int greyAddr, int trigge
   }
   else if (triggerValBlack > triggerMin) {
     blackVal = map(scale(triggerValBlack), scale(triggerMin), scale(triggerMax), outMin, outMax);
-    greyVal = outMin;
+    greyVal = 0;
   }
   else if (triggerValGrey > triggerMin) {
-    blackVal = outMin;
+    blackVal = 0;
     greyVal = map(scale(triggerValGrey), scale(triggerMin), scale(triggerMax), outMin, outMax);
   }
   else {
@@ -91,6 +92,11 @@ void moveMusclePairTrigger(String label, int blackAddr, int greyAddr, int trigge
   }
 
   Serial.print((String)label+": Black: "+blackVal+", Grey: "+greyVal+"  |  ");
+
+  // Set PWM values.
+  // (Actually do the thing. Send the black and grey values---whatever they have been determined to be---to the PWM controller to control the voltage that the solenoid in each proportional valve will be fed.)
+  pwm.setPWM(blackAddr, 0, blackVal);
+  pwm.setPWM(greyAddr, 0, greyVal);
 
 }
 
@@ -179,11 +185,19 @@ void loop() {
 
   // LeftHat -> Wrist
   moveMusclePairHat("Wrist Pitch", wristPitchAddrBlack, wristPitchAddrGrey, Xbox.getAnalogHat(LeftHatY), slow);
-  moveMusclePairHat("Wrist Roll", wristRollAddrBlack, wristRollAddrGrey, Xbox.getAnalogHat(LeftHatX), slow);
+  moveMusclePairHat("(Wrist) Roll", wristRollAddrBlack, wristRollAddrGrey, Xbox.getAnalogHat(LeftHatX), slow);
 
-  if (Xbox.getButtonClick(L1)) {
-    // Triggers + L1 -> Aux
-    moveMusclePairTrigger("Aux", auxAddrBlack, auxAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
+  // Serial.print((String)Xbox.getButtonClick(R1)+";"+Xbox.getButtonPress(R1)+";"+Xbox.getButtonClick(L1));
+
+  if (Xbox.getButtonPress(L1)) {
+    // Triggers + L1 -> AuxOne
+    moveMusclePairTrigger("AuxOne", auxOneAddrBlack, auxOneAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
+
+  }
+  else if (Xbox.getButtonPress(R1)) {
+    // Triggers + R1 -> AuxTwo
+    moveMusclePairTrigger("AuxTwo", auxTwoAddrBlack, auxTwoAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
+
   }
   else {
     // Triggers -> Claw
