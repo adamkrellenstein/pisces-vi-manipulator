@@ -19,6 +19,7 @@ const int armYawAddrBlack        = 2, armYawAddrGrey       = 3;
 const int wristPitchAddrBlack    = 4, wristPitchAddrGrey   = 5;
 const int wristRollAddrBlack     = 6, wristRollAddrGrey    = 7;
 const int clawAddrBlack          = 8, clawAddrGrey         = 9;
+const int auxAddrBlack           = 10, auxAddrGrey         = 11;
 
 // Global Variable Initialization
 int slow = 0;     // By default, slow mode is off.
@@ -66,24 +67,23 @@ void moveMusclePairTrigger(String label, int blackAddr, int greyAddr, int trigge
   int blackVal;
   int greyVal;
 
-  int triggerMin = 100; // TODO: Dead zone
+  int triggerMin = 300;   // Dead zone
   int triggerMax = 1023;
 
   Serial.print((String)triggerValBlack+" "+triggerValGrey);
 
   if (triggerValBlack > 0 && triggerValGrey > 0) {
+    // If both triggers are pulled, stop the claw.
     blackVal = 0;
     greyVal = 0;
   }
   else if (triggerValBlack > triggerMin) {
     blackVal = map(scale(triggerValBlack), scale(triggerMin), scale(triggerMax), outMin, outMax);
-
     greyVal = outMin;
   }
   else if (triggerValGrey > triggerMin) {
     blackVal = outMin;
     greyVal = map(scale(triggerValGrey), scale(triggerMin), scale(triggerMax), outMin, outMax);
-
   }
   else {
     blackVal = 0;
@@ -183,12 +183,12 @@ void loop() {
 
   if (Xbox.getButtonClick(L1)) {
     // Triggers + L1 -> Aux
+    moveMusclePairTrigger("Aux", auxAddrBlack, auxAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
   }
   else {
     // Triggers -> Claw
     moveMusclePairTrigger("Claw", clawAddrBlack, clawAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
   }
-
 
   // Log a newline over the Serial Port, so each loop has its own line of debug output.
   Serial.println();
