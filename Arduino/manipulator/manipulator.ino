@@ -69,17 +69,21 @@ void moveMusclePairTrigger(String label, int blackAddr, int greyAddr, int trigge
   int triggerMin = 100; // TODO: Dead zone
   int triggerMax = 1023;
 
+  Serial.print((String)triggerValBlack+" "+triggerValGrey);
+
   if (triggerValBlack > 0 && triggerValGrey > 0) {
     blackVal = 0;
     greyVal = 0;
   }
   else if (triggerValBlack > triggerMin) {
-    blackVal = outMax; // TODO
+    blackVal = map(scale(triggerValBlack), scale(triggerMin), scale(triggerMax), outMin, outMax);
+
     greyVal = outMin;
   }
   else if (triggerValGrey > triggerMin) {
     blackVal = outMin;
-    greyVal = outMax; // TODO
+    greyVal = map(scale(triggerValGrey), scale(triggerMin), scale(triggerMax), outMin, outMax);
+
   }
   else {
     blackVal = 0;
