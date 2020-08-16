@@ -21,7 +21,7 @@ const short int wristRollAddrBlack     = 6, wristRollAddrGrey    = 7;
 const short int clawAddrBlack          = 8, clawAddrGrey         = 9;
 const short int auxOneAddrBlack        = 10, auxOneAddrGrey      = 11;
 const short int auxTwoAddrBlack        = 12, auxTwoAddrGrey      = 13;
-const short int shoulderAddrBlack      = 14, shoulderAddrGrey    = 14;
+const short int shoulderAddrBlack      = 14, shoulderAddrGrey    = 15; // TODO
 
 // Global Variable Initialization
 int short slow = 0;     // By default, slow mode is off.
