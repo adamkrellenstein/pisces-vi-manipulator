@@ -1,3 +1,5 @@
 # Introduction
 
-- The code you're looking for is in [Arduino/manipulator/manipulator.ino](Arduino/manipulator/manipulator.ino).
+- The Arduino code is in [Arduino/manipulator/manipulator.ino](Arduino/manipulator/manipulator.ino). It is near-complete.
+- The Raspberry Pi code is in [rpi.py](rpi.py). It's pretty early
+  days still.
