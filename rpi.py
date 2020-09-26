@@ -7,7 +7,7 @@ with contextlib.redirect_stdout(None):
 
 # Initialize PyGame
 pygame.init()
-os.environ["DISPLAY"] = ":0.0"
+# os.environ["DISPLAY"] = ":0.0"
 
 # Initialize Joysticks
 pygame.joystick.init()
