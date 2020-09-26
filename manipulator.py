@@ -130,9 +130,7 @@ def moveMusclePairHat(label, blackAddr, greyAddr, hatVal, slow):
         else:
             greyVal = scale(hatVal, hatMin, hatMax)
 
-    # print(label, "Black:", blackVal, "Grey:", greyVal, "|");
-    # print(label+": Black: "+blackVal+", Grey: "+greyVal+"  |  ");
-    print(label, hatVal, "Black:", blackVal, "Grey:", greyVal, "|");
+    print(label, "Black:", blackVal, "Grey:", greyVal, "|");
     setPWM(blackAddr, blackVal)
     setPWM(greyAddr, greyVal)
 
@@ -147,14 +145,21 @@ def main_loop():
 
         # RightHat -> Arm
         if event.code == 'ABS_RY':
-            value = event.state
-            moveMusclePairHat("Arm Pitch", armPitchAddrBlack, armPitchAddrGrey, value, slow);
-
-        # moveMusclePairHat("Arm Yaw", armYawAddrBlack, armYawAddrGrey, Xbox.getAnalogHat(RightHatX), slow);
+            moveMusclePairHat("Arm Pitch", armPitchAddrBlack, armPitchAddrGrey, event.state, slow);
+        elif event.code == 'ABS_RX':
+            moveMusclePairHat("Arm Yaw", armYawAddrBlack, armYawAddrGrey, event.state, slow);
 
         # LeftHat -> Wrist
-        # moveMusclePairHat("Wrist Pitch", wristPitchAddrBlack, wristPitchAddrGrey, Xbox.getAnalogHat(LeftHatY), slow);
-        # moveMusclePairHat("(Wrist) Roll", wristRollAddrBlack, wristRollAddrGrey, Xbox.getAnalogHat(LeftHatX), slow);
+        elif event.code == 'ABS_Y':
+            moveMusclePairHat("Wrist Pitch", wristPitchAddrBlack, wristPitchAddrGrey, event.state, slow);
+        elif event.code == 'ABS_X':
+            moveMusclePairHat("(Wrist) Roll", wristRollAddrBlack, wristRollAddrGrey, event.state, slow);
+
+        elif event.code == 'SYN_REPORT':
+            pass
+        else:
+            print(event.code)
+
 
         # print(Xbox.getButtonClick(R1)+";"+Xbox.getButtonPress(R1)+";"+Xbox.getButtonClick(L1));
 
