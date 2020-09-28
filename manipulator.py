@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import random
 import sys
 from importlib import reload  
 import time
@@ -29,7 +30,7 @@ triggerMin = 0          # Dead zone
 triggerMax = 1023
 hatMin = 4000           # Dead zone
 hatMax = 32767
-outSlow = 0.05          # TODO: Calibrate (5%)
+outSlow = 0.05          # (5%) TODO: Calibrate
 minPWM = 0              # TODO: Calibrate
 maxPWM = 19988          # TODO: Calibrate
 
@@ -69,13 +70,13 @@ def moveMusclePairTrigger(label, triggerAddr, antiAddr, triggerVal):
         triggerVal = 0
         antiVal = 0
 
-    print(label+": Trigger: ", triggerVal, "|")
+    print(label+": Trigger: ", triggerVal)
     setPWM(triggerAddr, triggerVal)
     setPWM(antiAddr, antiVal)
 
 
 def moveMusclePairButton(label, buttonAddr, antiAddr, buttonVal):
-    print(label+": Button: ", buttonVal, "|")
+    print(label+": Button: ", buttonVal)
     setPWM(buttonAddr, buttonVal)
     setPWM(antiAddr, 0)
 
@@ -100,18 +101,19 @@ def moveMusclePairHat(label, blackAddr, greyAddr, hatVal):
         greyVal = scale(hatVal, hatMin, hatMax)
 
     if blackVal or greyVal:
-        print(label, "Black:", blackVal, "Grey:", greyVal, "|");
+        print(label, "Black:", blackVal, "Grey:", greyVal)
     setPWM(blackAddr, blackVal)
     setPWM(greyAddr, greyVal)
 
 
-def main_loop():
+def handle_event():
     global slow_mode, x_mode, y_mode
 
     try:
         events = inputs.get_gamepad()
     except (OSError, inputs.UnpluggedError) as err:
-        print('No device found!')
+        indent = random.randint(0, 12)
+        print(indent*' ' + 'No device found!')
         time.sleep(1)
         reload(inputs)
         return
@@ -126,12 +128,12 @@ def main_loop():
                 slow_mode = False
             else:
                 slow_mode = True
-        elif event.code == 'BTN_NORTH':
+        elif event.code == 'BTN_NORTH' or event.code == 'BTN_SOUTH':
             if x_mode:
                 x_mode = False
             else:
                 x_mode = True
-        elif event.code == 'BTN_WEST':
+        elif event.code == 'BTN_WEST' or event.code == 'BTN_EAST':
             if y_mode:
                 y_mode = False
             else:
@@ -171,6 +173,12 @@ def main_loop():
             else:
                 moveMusclePairButton("Retract", shoulderAddrBlack, shoulderAddrGrey, event.state)
 
+        elif event.code == 'BTN_MODE':
+            if event.state:
+                print('Commencing shutdown...')
+            else:
+                print('Shutdown aborted.')
+
         elif event.code == 'SYN_REPORT':
             pass
         else:
@@ -198,4 +206,4 @@ def init():
 if __name__ == '__main__':
     init()
     while True:
-        main_loop()
+        handle_event()
