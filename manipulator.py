@@ -47,7 +47,6 @@ def translate(value, leftMin, leftMax, rightMin, rightMax):
 
 
 def setPWM(address, value):
-    print(address, value)
     kit.servo[address].angle = value * 180
 
 
