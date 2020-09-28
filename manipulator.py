@@ -1,12 +1,14 @@
+#!/usr/bin/env python3
+
+import sys
+from importlib import reload  
 import time
-from inputs import get_gamepad
+import inputs
 from numpy import interp
 import math
 
 from adafruit_servokit import ServoKit
 kit = ServoKit(channels=16)
-kit.servo[0].set_pulse_width_range(0, 19988)   # TODO
-kit.servo[1].set_pulse_width_range(0, 19988)   # TODO
 
 
 # PWM Addresses for Each Pair of Muscles
@@ -15,14 +17,21 @@ armYawAddrBlack, armYawAddrGrey         = 2, 3
 wristPitchAddrBlack, wristPitchAddrGrey = 4, 5
 wristRollAddrBlack, wristRollAddrGrey   = 6, 7
 clawAddrBlack, clawAddrGrey             = 8, 9
-# auxOneAddrBlack        = 10, auxOneAddrGrey      = 11
-# auxTwoAddrBlack        = 12, auxTwoAddrGrey      = 13
-# shoulderAddrBlack      = 14, shoulderAddrGrey    = 15
-
+shoulderAddrBlack, shoulderAddrGrey     = 10, 11
+auxOneAddrBlack, auxOneAddrGrey         = 12, 13
+auxTwoAddrBlack, auxTwoAddrGrey         = 14, 15
 
 # Global Variable Initialization
-slow = 0        # By default, slow mode is off.
-outSlow = 0.1   # TODO: minimum power that still will move things
+slow_mode = False
+x_mode = False
+y_mode = False
+triggerMin = 0          # Dead zone
+triggerMax = 1023
+hatMin = 4000           # Dead zone
+hatMax = 32767
+outSlow = 0.05          # TODO: Calibrate (5%)
+minPWM = 0              # TODO: Calibrate
+maxPWM = 19988          # TODO: Calibrate
 
 
 def translate(value, leftMin, leftMax, rightMin, rightMax):
@@ -38,9 +47,7 @@ def translate(value, leftMin, leftMax, rightMin, rightMax):
 
 
 def setPWM(address, value):
-    # Actually do the thing. Send the black and grey values---whatever they
-    # have been determined to be---to the PWM controller to control the voltage
-    # that the solenoid in each proportional valve will be fed.
+    print(address, value)
     kit.servo[address].angle = value * 180
 
 
@@ -49,64 +56,33 @@ def scale(val, inMin, inMax):
     # sensitivity on the low-end, all values are square-rooted---compressing the
     # values asymmetrically, with more compression the larger the value.
 
-    return round(translate(abs(val), inMin, inMax, 0, 1), 3)
-    # return round(translate(math.sqrt(abs(val)), math.sqrt(inMin), math.sqrt(inMax), 0, 1), 3)
-
-
-def moveMusclePairTrigger(label, blackAddr, greyAddr, triggerValBlack, triggerValGrey, slow):
-    triggerMin = 300      # Dead zone
-    triggerMax = 1023
-
-    if (triggerValBlack > 0 and triggerValGrey > 0):
-        # If both triggers are pulled, stop moving the claw.
-        blackVal = 0
-        greyVal = 0
-    elif (triggerValBlack > triggerMin):
-        blackVal = scale(triggerValBlack, triggerMin, triggerMax)
-        greyVal = 0
-    elif (triggerValGrey > triggerMin):
-        blackVal = 0
-        greyVal = scale(triggerValGrey, triggerMin, triggerMax)
+    if slow_mode:
+        return outSlow
     else:
-        blackVal = 0
-        greyVal = 0
-
-    # print(label+": Black: "+blackVal+", Grey: "+greyVal+"  |  ")
-    setPWM(blackAddr, blackVal)
-    setPWM(greyAddr, greyVal)
+        return round(translate(abs(val), inMin, inMax, 0, 1), 3)
 
 
-def moveMusclePairButton(label, blackAddr, greyAddr, shoulderValBlack, shoulderValGrey, slow):
-  
-    if (shoulderValBlack and shoulderValGrey):
-        # If both buttons are pressed, stop moving the arm.
-        blackVal = 0
-        greyVal = 0
-    elif (shoulderValBlack):
-        blackVal = 1
-        greyVal = 0
-    elif (shoulderValGrey):
-        blackVal = 0
-        greyVal = 1
+def moveMusclePairTrigger(label, triggerAddr, antiAddr, triggerVal):
+    if triggerVal > triggerMin:
+        triggerVal = scale(triggerVal, triggerMin, triggerMax)
+        antiVal = 0
     else:
-        blackVal = 0
-        greyVal = 0
+        triggerVal = 0
+        antiVal = 0
 
-    # print(label+": Black: "+blackVal+", Grey: "+greyVal+"  |  ")
-    setPWM(blackAddr, blackVal)
-    setPWM(greyAddr, greyVal)
+    print(label+": Trigger: ", triggerVal, "|")
+    setPWM(triggerAddr, triggerVal)
+    setPWM(antiAddr, antiVal)
 
 
-def moveMusclePairHat(label, blackAddr, greyAddr, hatVal, slow):
+def moveMusclePairButton(label, buttonAddr, antiAddr, buttonVal):
+    print(label+": Button: ", buttonVal, "|")
+    setPWM(buttonAddr, buttonVal)
+    setPWM(antiAddr, 0)
+
+
+def moveMusclePairHat(label, blackAddr, greyAddr, hatVal):
     # Move a muscle pair in one dimension using an analog hat value.
-    hatMax = 32767
-
-    if (slow):
-        # In 'slow' mode, the dead zone has to be larger: you should have to move
-        # the stick all the way over for even the minimum power to be applied.
-        hatMin = 31000  # Dead zone (slow mode)
-    else:
-        hatMin = 7500   # Dead zone (normal)
 
     # Set muscle values.
     if (abs(hatVal) <= hatMin):
@@ -117,73 +93,110 @@ def moveMusclePairHat(label, blackAddr, greyAddr, hatVal, slow):
     elif (hatVal > hatMin):
         # Hat is up/right.
         greyVal = 0;
-        if (slow):
-            blackVal = outSlow
-        else:
-            blackVal = scale(hatVal, hatMin, hatMax)
+        blackVal = scale(hatVal, hatMin, hatMax)
 
     else:
         # Hat is down/left.
         blackVal = 0;
-        if (slow):
-            greyVal = outSlow
-        else:
-            greyVal = scale(hatVal, hatMin, hatMax)
+        greyVal = scale(hatVal, hatMin, hatMax)
 
-    print(label, "Black:", blackVal, "Grey:", greyVal, "|");
+    if blackVal or greyVal:
+        print(label, "Black:", blackVal, "Grey:", greyVal, "|");
     setPWM(blackAddr, blackVal)
     setPWM(greyAddr, greyVal)
 
 
 def main_loop():
-    events = get_gamepad()
+    global slow_mode, x_mode, y_mode
+
+    try:
+        events = inputs.get_gamepad()
+    except (OSError, inputs.UnpluggedError) as err:
+        print('No device found!')
+        time.sleep(1)
+        reload(inputs)
+        return
+
     for event in events:
 
-        # Hold the `BACK` button on the Xbox controller to make all muscles
-        # move as slowly as possible.
-        # slow = Xbox.getButtonPress(BACK);
+        # Set mode.
+        if event.code == 'BTN_SELECT':
+            # Hold the `SELECT` button on the Xbox controller to make all muscles
+            # move as slowly as possible.
+            if slow_mode:
+                slow_mode = False
+            else:
+                slow_mode = True
+        elif event.code == 'BTN_NORTH':
+            if x_mode:
+                x_mode = False
+            else:
+                x_mode = True
+        elif event.code == 'BTN_WEST':
+            if y_mode:
+                y_mode = False
+            else:
+                y_mode = True
 
         # RightHat -> Arm
-        if event.code == 'ABS_RY':
-            moveMusclePairHat("Arm Pitch", armPitchAddrBlack, armPitchAddrGrey, event.state, slow);
+        elif event.code == 'ABS_RY':
+            moveMusclePairHat("Arm Pitch", armPitchAddrBlack, armPitchAddrGrey, event.state)
         elif event.code == 'ABS_RX':
-            moveMusclePairHat("Arm Yaw", armYawAddrBlack, armYawAddrGrey, event.state, slow);
+            moveMusclePairHat("Arm Yaw", armYawAddrBlack, armYawAddrGrey, event.state)
 
         # LeftHat -> Wrist
         elif event.code == 'ABS_Y':
-            moveMusclePairHat("Wrist Pitch", wristPitchAddrBlack, wristPitchAddrGrey, event.state, slow);
+            moveMusclePairHat("Wrist Pitch", wristPitchAddrBlack, wristPitchAddrGrey, event.state)
         elif event.code == 'ABS_X':
-            moveMusclePairHat("(Wrist) Roll", wristRollAddrBlack, wristRollAddrGrey, event.state, slow);
+            moveMusclePairHat("(Wrist) Roll", wristRollAddrBlack, wristRollAddrGrey, event.state)
+
+        # Triggers -> Claw
+        elif event.code == 'ABS_Z':
+            moveMusclePairTrigger("ClawOpen", clawAddrBlack, clawAddrGrey, event.state)
+        elif event.code == 'ABS_RZ':
+            moveMusclePairTrigger("ClawClose", clawAddrGrey, clawAddrBlack, event.state)
+
+        # Shoulder Buttons -> Shoulder/AuxOne/AuxTwo
+        elif event.code == 'BTN_TL':
+            if x_mode:
+                moveMusclePairButton("AuxOne Up", auxOneAddrGrey, auxOneAddrBlack, event.state)
+            elif y_mode:
+                moveMusclePairButton("AuxTwo Up", auxTwoAddrGrey, auxTwoAddrBlack, event.state)
+            else:
+                moveMusclePairButton("Extend", shoulderAddrGrey, shoulderAddrBlack, event.state)
+        elif event.code == 'BTN_TR':
+            if x_mode:
+                moveMusclePairButton("AuxOne Down", auxOneAddrBlack, auxOneAddrGrey, event.state)
+            elif y_mode:
+                moveMusclePairButton("AuxTwo Down", auxTwoAddrBlack, auxTwoAddrGrey, event.state)
+            else:
+                moveMusclePairButton("Retract", shoulderAddrBlack, shoulderAddrGrey, event.state)
 
         elif event.code == 'SYN_REPORT':
             pass
         else:
-            print(event.code)
+            print("Unknown command:", event.code)
 
-
-        # print(Xbox.getButtonClick(R1)+";"+Xbox.getButtonPress(R1)+";"+Xbox.getButtonClick(L1));
-
-        # if (Xbox.getButtonPress(Y)) {
-        #   // Triggers + Y -> AuxOne
-        #   moveMusclePairTrigger("AuxOne", auxOneAddrBlack, auxOneAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
-        # elif (Xbox.getButtonPress(X)) {
-        #   // Triggers + X -> AuxTwo
-        #   moveMusclePairTrigger("AuxTwo", auxTwoAddrBlack, auxTwoAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
-        # else {
-        #   // Triggers -> Claw
-        #   moveMusclePairTrigger("Claw", clawAddrBlack, clawAddrGrey, Xbox.getButtonPress(R2), Xbox.getButtonPress(L2), slow);
-        # Shoulder Buttons -> Shoulder (shoulderAddrGrey is retracting)
-        # moveMusclePairButton("Extend", shoulderAddrBlack, shoulderAddrGrey, Xbox.getButtonPress(R1), Xbox.getButtonPress(L1), slow);
-
-        # Log a newline, so each loop has its own line of debug output.
-        # print()
 
         # Instead of looping as fast as possible, delay for 1 ms between
         # cycles.
         time.sleep(.001)
 
 
+def init():
+
+    # PWM Configuration
+    for i in range(0, 16):
+        kit.servo[i].set_pulse_width_range(minPWM, maxPWM)
+
+    # Set everything to zero on start.
+    for i in range(0, 15):
+        setPWM(i, 0)
+
+    print("***All systems nominal.***")
+
+
 if __name__ == '__main__':
-    print("***All Systems Nominal***")
+    init()
     while True:
         main_loop()
