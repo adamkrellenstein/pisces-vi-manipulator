@@ -180,9 +180,9 @@ def handle_event():
 
         elif event.code == 'BTN_MODE':
             if event.state:
-                print('Shutting down...')
+                print('Shutting down controller...')
             else:
-                print('Shutdown aborted.')
+                print('Controller shutdown aborted.')
 
         elif event.code == 'SYN_REPORT':
             pass
