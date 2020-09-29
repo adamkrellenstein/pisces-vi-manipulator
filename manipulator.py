@@ -87,6 +87,7 @@ def moveMusclePairButton(label, buttonAddr, buttonVal):
     for i in [addr for addr in buttonAddrList if addr != buttonAddr]:    # Buttons can stick if you change modes while letting off a button.
         setPWM(i, 0)
 
+
 def moveMusclePairHat(label, blackAddr, greyAddr, hatVal):
     # Move a muscle pair in one dimension using an analog hat value.
 
