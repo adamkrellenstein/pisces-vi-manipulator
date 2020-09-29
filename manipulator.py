@@ -21,6 +21,7 @@ clawAddrBlack, clawAddrGrey             = 8, 9
 shoulderAddrBlack, shoulderAddrGrey     = 10, 11
 auxOneAddrBlack, auxOneAddrGrey         = 12, 13
 auxTwoAddrBlack, auxTwoAddrGrey         = 14, 15
+buttonAddrList = [10, 11, 12, 13, 14, 15]
 
 # Global Variable Initialization
 slow_mode = False
@@ -75,11 +76,16 @@ def moveMusclePairTrigger(label, triggerAddr, antiAddr, triggerVal):
     setPWM(antiAddr, antiVal)
 
 
-def moveMusclePairButton(label, buttonAddr, antiAddr, buttonVal):
+def moveMusclePairButton(label, buttonAddr, buttonVal):
     print(label+": Button: ", buttonVal)
-    setPWM(buttonAddr, buttonVal)
-    setPWM(antiAddr, 0)
+    if buttonVal:
+        setPWM(buttonAddr, scale(1, 0, 1))
+    else:
+        setPWM(buttonAddr, 0)
 
+    # When one button is pressed, turn off all other buttons (even across modes).
+    for i in [addr for addr in buttonAddrList if addr != buttonAddr]:    # Buttons can stick if you change modes while letting off a button.
+        setPWM(i, 0)
 
 def moveMusclePairHat(label, blackAddr, greyAddr, hatVal):
     # Move a muscle pair in one dimension using an analog hat value.
@@ -122,22 +128,20 @@ def handle_event():
 
         # Set mode.
         if event.code == 'BTN_SELECT':
-            # Hold the `SELECT` button on the Xbox controller to make all muscles
-            # move as slowly as possible.
-            if slow_mode:
-                slow_mode = False
-            else:
+            if event.state:
                 slow_mode = True
+            else:
+                slow_mode = False
         elif event.code == 'BTN_NORTH' or event.code == 'BTN_SOUTH':
-            if x_mode:
-                x_mode = False
-            else:
+            if event.state:
                 x_mode = True
-        elif event.code == 'BTN_WEST' or event.code == 'BTN_EAST':
-            if y_mode:
-                y_mode = False
             else:
+                x_mode = False
+        elif event.code == 'BTN_WEST' or event.code == 'BTN_EAST':
+            if event.state:
                 y_mode = True
+            else:
+                y_mode = False
 
         # RightHat -> Arm
         elif event.code == 'ABS_RY':
@@ -160,22 +164,22 @@ def handle_event():
         # Shoulder Buttons -> Shoulder/AuxOne/AuxTwo
         elif event.code == 'BTN_TL':
             if x_mode:
-                moveMusclePairButton("AuxOne Up", auxOneAddrGrey, auxOneAddrBlack, event.state)
+                moveMusclePairButton("AuxOne Up", auxOneAddrGrey, event.state)
             elif y_mode:
-                moveMusclePairButton("AuxTwo Up", auxTwoAddrGrey, auxTwoAddrBlack, event.state)
+                moveMusclePairButton("AuxTwo Up", auxTwoAddrGrey, event.state)
             else:
-                moveMusclePairButton("Extend", shoulderAddrGrey, shoulderAddrBlack, event.state)
+                moveMusclePairButton("Extend", shoulderAddrGrey, event.state)
         elif event.code == 'BTN_TR':
             if x_mode:
-                moveMusclePairButton("AuxOne Down", auxOneAddrBlack, auxOneAddrGrey, event.state)
+                moveMusclePairButton("AuxOne Down", auxOneAddrBlack, event.state)
             elif y_mode:
-                moveMusclePairButton("AuxTwo Down", auxTwoAddrBlack, auxTwoAddrGrey, event.state)
+                moveMusclePairButton("AuxTwo Down", auxTwoAddrBlack, event.state)
             else:
-                moveMusclePairButton("Retract", shoulderAddrBlack, shoulderAddrGrey, event.state)
+                moveMusclePairButton("Retract", shoulderAddrBlack, event.state)
 
         elif event.code == 'BTN_MODE':
             if event.state:
-                print('Commencing shutdown...')
+                print('Shutting down...')
             else:
                 print('Shutdown aborted.')
 
@@ -197,10 +201,10 @@ def init():
         kit.servo[i].set_pulse_width_range(minPWM, maxPWM)
 
     # Set everything to zero on start.
-    for i in range(0, 15):
+    for i in range(0, 16):
         setPWM(i, 0)
 
-    print("***All systems nominal.***")
+    print("***All Systems Nominal***")
 
 
 if __name__ == '__main__':
